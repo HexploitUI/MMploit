@@ -11,8 +11,9 @@ local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
 local roles
 local previousRoles = {}  -- Store the previous roles to check if they change
+local hasLiedThisRound = false  -- Track if a lie has been told during this round
 
--- > Functions <--
+-- > Functions <-- 
 
 function GetRandomPlayerExcluding(excludedNames)
     local potentialTargets = {}
@@ -28,36 +29,40 @@ function GetRandomPlayerExcluding(excludedNames)
 end
 
 function SendRoleToChat()
-    for i, v in pairs(roles) do
-        -- Skip if the LocalPlayer has no role (Innocent)
-        if i == LP.Name then
-            if v.Role == "Murderer" or v.Role == "Sheriff" then
-                local fakeRole, fakeTarget
+    -- Only lie if it hasn't been done yet in this round
+    if not hasLiedThisRound then
+        for i, v in pairs(roles) do
+            -- Skip if the LocalPlayer has no role (Innocent)
+            if i == LP.Name then
+                if v.Role == "Murderer" or v.Role == "Sheriff" then
+                    local fakeRole, fakeTarget
 
-                -- Generate fake information
-                if v.Role == "Murderer" then
-                    fakeTarget = GetRandomPlayerExcluding({LP.Name, GetSheriff()})
-                    fakeRole = "Murderer"
-                elseif v.Role == "Sheriff" then
-                    fakeTarget = GetRandomPlayerExcluding({LP.Name})
-                    fakeRole = "Sheriff"
-                end
+                    -- Generate fake information
+                    if v.Role == "Murderer" then
+                        fakeTarget = GetRandomPlayerExcluding({LP.Name, GetSheriff()})
+                        fakeRole = "Murderer"
+                    elseif v.Role == "Sheriff" then
+                        fakeTarget = GetRandomPlayerExcluding({LP.Name})
+                        fakeRole = "Sheriff"
+                    end
 
-                if fakeTarget and fakeRole then
-                    local message = fakeTarget .. " is the " .. fakeRole .. "!"
-                    SendMessageToChat(message)
+                    if fakeTarget and fakeRole then
+                        local message = fakeTarget .. " is the " .. fakeRole .. "!"
+                        SendMessageToChat(message)
+                    end
+                    hasLiedThisRound = true  -- Mark that a lie has been told
+                    return
                 end
-                return
             end
-        end
 
-        -- Send real messages for other players
-        if v.Role == "Murderer" and (previousRoles[i] ~= "Murderer") then
-            local message = i .. " is the Murderer!"
-            SendMessageToChat(message)
-        elseif v.Role == "Sheriff" and (previousRoles[i] ~= "Sheriff") then
-            local message = i .. " is the Sheriff!"
-            SendMessageToChat(message)
+            -- Send real messages for other players
+            if v.Role == "Murderer" and (previousRoles[i] ~= "Murderer") then
+                local message = i .. " is the Murderer!"
+                SendMessageToChat(message)
+            elseif v.Role == "Sheriff" and (previousRoles[i] ~= "Sheriff") then
+                local message = i .. " is the Sheriff!"
+                SendMessageToChat(message)
+            end
         end
     end
 end
@@ -112,6 +117,7 @@ RunService.RenderStepped:connect(function()
 
     if not IsAnyoneAssignedRole() then
         previousRoles = {}
+        hasLiedThisRound = false  -- Reset lie status when no roles are assigned
     else
         SendRoleToChat()
         UpdatePreviousRoles()
